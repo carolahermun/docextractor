@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 30;
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const PROMPT = `Analiza este documento (factura o guía de despacho) y extrae los datos.
@@ -27,30 +29,41 @@ export async function POST(req: NextRequest) {
     const base64 = Buffer.from(bytes).toString("base64");
 
     const isPdf = file.type === "application/pdf";
-    let mediaType = file.type as "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf";
-    if (!isPdf && !["image/jpeg","image/png","image/gif","image/webp"].includes(mediaType)) {
-      mediaType = "image/jpeg";
-    }
 
-    const contentBlock = isPdf
-      ? { type: "document" as const, source: { type: "base64" as const, media_type: "application/pdf" as const, data: base64 } }
-      : { type: "image" as const, source: { type: "base64" as const, media_type: mediaType as "image/jpeg"|"image/png"|"image/gif"|"image/webp", data: base64 } };
+    let contentBlock: any;
+
+    if (isPdf) {
+      contentBlock = {
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: base64 },
+      };
+    } else {
+      const validImageTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+      const mediaType = validImageTypes.includes(file.type) ? file.type : "image/jpeg";
+      contentBlock = {
+        type: "image",
+        source: { type: "base64", media_type: mediaType, data: base64 },
+      };
+    }
 
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1024,
-      messages: [{ role: "user", content: [contentBlock, { type: "text", text: PROMPT }] }],
+      messages: [{ role: "user", content: [contentBlock, { type: "text", text: PROMPT }] as any }],
     });
 
-    const text = message.content.map(b => (b.type === "text" ? b.text : "")).join("").trim();
+    const text = message.content
+      .map((b) => (b.type === "text" ? b.text : ""))
+      .join("")
+      .trim();
+
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return NextResponse.json({ error: `Sin JSON en respuesta: ${text.slice(0, 200)}` }, { status: 500 });
+    if (!match) return NextResponse.json({ error: `Respuesta inesperada: ${text.slice(0, 200)}` }, { status: 500 });
 
     const data = JSON.parse(match[0]);
     return NextResponse.json({ data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Error desconocido" }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Error desconocido";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
-
-export const maxDuration = 30;
