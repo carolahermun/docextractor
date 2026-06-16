@@ -8,15 +8,17 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const PROMPT = `Analiza este documento (factura o guía de despacho) y extrae los datos.
 Responde SOLO con un JSON válido, sin backticks, sin texto extra:
 {
-  "proveedor": "nombre empresa emisora o null",
-  "fecha": "DD/MM/YYYY o null",
-  "valor": "monto total con moneda o null",
-  "numero_documento": "número factura o guía o null",
+  "proveedor": "nombre o razón social de la empresa emisora o null",
+  "rut_proveedor": "RUT del proveedor con formato XX.XXX.XXX-X o null",
+  "fecha": "fecha del documento en formato DD/MM/YYYY o null",
   "tipo_documento": "Factura o Guía de Despacho",
-  "orden_compra": "número OC o null",
-  "ciudad": "ciudad origen o destino o null",
-  "rut_proveedor": "RUT si aparece o null",
-  "descripcion": "descripción breve del contenido o null"
+  "numero_documento": "número de la factura o guía o null",
+  "orden_compra": "número de orden de compra o null",
+  "ciudad": "ciudad de origen o destino o null",
+  "descripcion": "descripción detallada del contenido, productos o servicios o null",
+  "valor_neto": "monto neto sin IVA, solo número sin símbolos ni puntos, o null",
+  "iva": "monto del IVA, solo número sin símbolos ni puntos, o null",
+  "total": "monto total con IVA incluido, solo número sin símbolos ni puntos, o null"
 }`;
 
 export async function POST(req: NextRequest) {
