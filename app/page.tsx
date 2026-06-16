@@ -72,19 +72,25 @@ export default function Home() {
     const done = docs.filter(d => d.status === "done");
     if (!done.length) return showToast("No hay documentos procesados aún.");
     const rows = done.map(d => ({
-      Proveedor:        d.data.proveedor        ?? "",
-      Fecha:            d.data.fecha            ?? "",
-      Valor:            d.data.valor            ?? "",
-      "N° Documento":   d.data.numero_documento ?? "",
-      Tipo:             d.data.tipo_documento   ?? "",
-      "Orden de Compra":d.data.orden_compra     ?? "",
-      Ciudad:           d.data.ciudad           ?? "",
-      "RUT Proveedor":  d.data.rut_proveedor    ?? "",
-      Descripción:      d.data.descripcion      ?? "",
-      "Archivo":        d.name,
+      Proveedor:         d.data.proveedor        ?? "",
+      "RUT Proveedor":   d.data.rut_proveedor    ?? "",
+      Fecha:             d.data.fecha            ?? "",
+      Tipo:              d.data.tipo_documento   ?? "",
+      "N° Documento":    d.data.numero_documento ?? "",
+      "Orden de Compra": d.data.orden_compra     ?? "",
+      Ciudad:            d.data.ciudad           ?? "",
+      "Descripción":     d.data.descripcion      ?? "",
+      "Valor Neto":      d.data.valor_neto       ?? "",
+      IVA:               d.data.iva              ?? "",
+      Total:             d.data.total            ?? "",
+      Archivo:           d.name,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = [24,12,16,16,14,16,14,14,36,30].map(w => ({ wch: w }));
+    ws["!cols"] = [26,16,12,14,16,18,14,45,14,12,14,30].map(w => ({ wch: w }));
+    done.forEach((d, i) => {
+      const cellRef = XLSX.utils.encode_cell({ r: i + 1, c: 11 });
+      if (ws[cellRef]) ws[cellRef].l = { Target: d.objectUrl, Tooltip: d.name };
+    });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Documentos");
     XLSX.writeFile(wb, `documentos_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -94,11 +100,11 @@ export default function Home() {
   const copySheets = () => {
     const done = docs.filter(d => d.status === "done");
     if (!done.length) return showToast("No hay documentos procesados aún.");
-    const cols = ["Proveedor","Fecha","Valor","N° Documento","Tipo","Orden de Compra","Ciudad","RUT","Descripción","Archivo"];
+    const cols = ["Proveedor","RUT Proveedor","Fecha","Tipo","N° Documento","Orden de Compra","Ciudad","Descripción","Valor Neto","IVA","Total","Archivo"];
     const rows = done.map(d => [
-      d.data.proveedor, d.data.fecha, d.data.valor, d.data.numero_documento,
-      d.data.tipo_documento, d.data.orden_compra, d.data.ciudad,
-      d.data.rut_proveedor, d.data.descripcion, d.name,
+      d.data.proveedor, d.data.rut_proveedor, d.data.fecha, d.data.tipo_documento,
+      d.data.numero_documento, d.data.orden_compra, d.data.ciudad,
+      d.data.descripcion, d.data.valor_neto, d.data.iva, d.data.total, d.name,
     ].map(v => v ?? "").join("\t"));
     navigator.clipboard.writeText([cols.join("\t"), ...rows].join("\n"))
       .then(() => showToast("✅ Copiado. Pega con Ctrl+V en Google Sheets."))
@@ -183,7 +189,7 @@ export default function Home() {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: T.slate }}>
-                    {["Estado","Archivo","Proveedor","Fecha","Valor","N° Doc.","Tipo","OC","Ciudad","Ver",""].map(h => (
+                    {["Estado","Archivo","Proveedor","RUT","Fecha","Tipo","N° Doc.","OC","Ciudad","Valor Neto","IVA","Total","Ver",""].map(h => (
                       <th key={h} style={{ padding: "11px 14px", textAlign: "left", fontWeight: 600, fontSize: 10, color: T.muted, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
                     ))}
                   </tr>
@@ -203,16 +209,19 @@ export default function Home() {
                       </td>
                       <td style={{ ...td, color: T.muted, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.name}>{doc.name}</td>
                       <td style={{ ...td, fontWeight: 600, color: T.navy }}>{doc.data.proveedor ?? <Dash />}</td>
+                      <td style={td}>{doc.data.rut_proveedor ?? <Dash />}</td>
                       <td style={td}>{doc.data.fecha ?? <Dash />}</td>
-                      <td style={{ ...td, fontWeight: 700, color: T.teal }}>{doc.data.valor ?? <Dash />}</td>
-                      <td style={td}>{doc.data.numero_documento ?? <Dash />}</td>
                       <td style={td}>
                         {doc.data.tipo_documento
                           ? <span style={{ background: doc.data.tipo_documento.includes("Factura") ? "#EFF6FF" : "#F0FDF4", color: doc.data.tipo_documento.includes("Factura") ? "#1D4ED8" : "#15803D", padding: "3px 10px", borderRadius: 20, fontWeight: 600, fontSize: 11 }}>{doc.data.tipo_documento}</span>
                           : <Dash />}
                       </td>
+                      <td style={td}>{doc.data.numero_documento ?? <Dash />}</td>
                       <td style={td}>{doc.data.orden_compra ?? <Dash />}</td>
                       <td style={td}>{doc.data.ciudad ?? <Dash />}</td>
+                      <td style={{ ...td, fontWeight: 700, color: T.teal }}>{doc.data.valor_neto ? `$${Number(doc.data.valor_neto).toLocaleString("es-CL")}` : <Dash />}</td>
+                      <td style={td}>{doc.data.iva ? `$${Number(doc.data.iva).toLocaleString("es-CL")}` : <Dash />}</td>
+                      <td style={{ ...td, fontWeight: 700, color: T.teal }}>{doc.data.total ? `$${Number(doc.data.total).toLocaleString("es-CL")}` : <Dash />}</td>
                       <td style={td}>
                         <a href={doc.objectUrl} target="_blank" rel="noreferrer" style={{ color: T.teal, textDecoration: "none", border: `1px solid ${T.border}`, borderRadius: 6, padding: "4px 10px", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap" }}>🔍 Ver</a>
                       </td>
