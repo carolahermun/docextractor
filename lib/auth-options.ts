@@ -12,13 +12,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Contraseña", type: "password" },
       },
       async authorize(credentials) {
-        console.log("=== AUTHORIZE START ===");
-        console.log("Email recibido:", JSON.stringify(credentials?.email));
-
-        if (!credentials?.email || !credentials?.password) {
-          console.log("FALLO: faltan credenciales");
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const { data: user, error } = await supabaseAdmin
           .from("app_users")
@@ -26,24 +20,11 @@ export const authOptions: NextAuthOptions = {
           .eq("email", credentials.email)
           .single();
 
-        console.log("Supabase error:", error ? JSON.stringify(error) : "ninguno");
-        console.log("Usuario encontrado:", user ? `SI (${user.email})` : "NO");
+        if (error || !user) return null;
 
-        if (error || !user) {
-          console.log("FALLO: no se encontró usuario o hubo error de Supabase");
-          return null;
-        }
-
-        console.log("Hash en BD:", user.password_hash);
         const valid = await bcrypt.compare(credentials.password, user.password_hash);
-        console.log("Resultado bcrypt.compare:", valid);
+        if (!valid) return null;
 
-        if (!valid) {
-          console.log("FALLO: contraseña no coincide");
-          return null;
-        }
-
-        console.log("=== AUTHORIZE SUCCESS ===");
         return {
           id: user.id,
           name: user.name,
