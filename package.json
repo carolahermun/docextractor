@@ -1,6 +1,6 @@
 {
-  "name": "docextractor",
-  "version": "1.0.0",
+  "name": "extracta",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,11 +12,15 @@
     "react": "^18",
     "react-dom": "^18",
     "@anthropic-ai/sdk": "^0.24.3",
+    "@supabase/supabase-js": "^2.45.0",
+    "next-auth": "^4.24.7",
+    "bcryptjs": "^2.4.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
+    "@types/bcryptjs": "^2.4.6",
     "typescript": "^5"
   }
 }

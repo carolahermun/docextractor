@@ -1,86 +1,118 @@
-# DocExtractor 📄
+# Extracta v2 — Multi-empresa con base de datos persistente
 
-Extrae datos de facturas y guías de despacho con IA (Claude de Anthropic).  
-Exporta a Excel o copia directo a Google Sheets.
+## 🆕 Qué cambió respecto a la v1
 
----
-
-## 🚀 Deploy en Vercel (5 pasos)
-
-### 1. Obtén tu API Key de Anthropic
-- Ve a https://console.anthropic.com/settings/keys
-- Crea una nueva API Key y cópiala
-
-### 2. Sube el proyecto a GitHub
-- Crea un repositorio nuevo en https://github.com/new
-- Sube estos archivos al repositorio
-
-### 3. Conecta con Vercel
-- Ve a https://vercel.com y crea cuenta gratuita
-- Haz clic en "Add New Project"
-- Importa tu repositorio de GitHub
-
-### 4. Agrega la variable de entorno
-En Vercel, antes de hacer deploy:
-- Ve a "Environment Variables"
-- Agrega: `ANTHROPIC_API_KEY` = tu key (sk-ant-...)
-
-### 5. Deploy
-- Haz clic en "Deploy"
-- En 2 minutos tendrás tu URL pública (ej: docextractor.vercel.app)
+- ✅ Los documentos **ya no se borran** al recargar o cambiar de dispositivo
+- ✅ Las fotos/PDFs se guardan **permanentemente** (Supabase Storage)
+- ✅ Soporta **varias empresas** (multi-tenant), cada una aislada
+- ✅ Login real con roles: `admin`, `editor`, `viewer`
 
 ---
 
-## 💻 Desarrollo local
+## 🚀 Configuración paso a paso
 
-```bash
-# 1. Instala dependencias
-npm install
+### 1. Crear proyecto en Supabase
 
-# 2. Crea el archivo de variables de entorno
-cp .env.example .env.local
-# Edita .env.local y agrega tu ANTHROPIC_API_KEY
+1. Ve a https://supabase.com → Sign up (con GitHub, igual que Vercel)
+2. "New Project" → ponle un nombre (ej: "docextractor")
+3. Elige una contraseña para la base de datos y guárdala
+4. Espera ~2 minutos a que se cree el proyecto
 
-# 3. Inicia el servidor
-npm run dev
+### 2. Crear las tablas de la base de datos
 
-# 4. Abre http://localhost:3000
+1. En Supabase, ve al menú izquierdo → **SQL Editor**
+2. Abre el archivo `supabase-schema.sql` de este proyecto
+3. Copia y pega TODO el contenido en el SQL Editor
+4. Haz clic en **Run**
+
+### 3. Crear el bucket de almacenamiento (para las fotos/PDFs)
+
+1. En Supabase, ve a **Storage** (menú izquierdo)
+2. Clic en **New bucket**
+3. Nombre: `documents`
+4. Marca **Public bucket** (así los links del Excel funcionan)
+5. **Create bucket**
+
+### 4. Obtener tus claves de Supabase
+
+1. Ve a **Settings** (ícono de engranaje) → **API**
+2. Copia:
+   - **Project URL** → la usarás como `NEXT_PUBLIC_SUPABASE_URL`
+   - **service_role key** (en "Project API keys", la secreta) → `SUPABASE_SERVICE_ROLE_KEY`
+
+⚠️ La `service_role key` es muy poderosa — nunca la subas a un repositorio público ni la compartas.
+
+### 5. Crear tu primera empresa y usuario admin
+
+Necesitas generar una contraseña "hasheada" (encriptada) antes de crear el usuario. 
+
+**Opción fácil — usa este sitio:** https://bcrypt-generator.com
+1. Escribe la contraseña que quieras (ej: `admin123`)
+2. Rounds: 10
+3. Genera el hash
+4. Copia el resultado (empieza con `$2a$` o `$2b$`)
+
+Luego en Supabase → SQL Editor, ejecuta (reemplazando los valores):
+
+```sql
+-- 1. Crear la empresa
+insert into companies (name) values ('Transportes Ejemplo SPA')
+returning id;
+-- 👆 copia el ID que te devuelve
+
+-- 2. Crear el usuario admin (reemplaza el company_id con el ID de arriba)
+insert into app_users (company_id, email, password_hash, name, role)
+values (
+  'PEGA-AQUI-EL-ID-DE-LA-EMPRESA',
+  'admin@transportesejemplo.com',
+  'PEGA-AQUI-EL-HASH-GENERADO',
+  'Administrador',
+  'admin'
+);
 ```
 
+Repite el paso 2 para cada chofer/usuario, cambiando el rol a `editor` (sube documentos) o `viewer` (solo visualiza).
+
+### 6. Variables de entorno en Vercel
+
+Agrega estas 4 variables en Vercel → Settings → Environment Variables:
+
+| Nombre | De dónde sacarlo |
+|---|---|
+| `ANTHROPIC_API_KEY` | console.anthropic.com |
+| `NEXTAUTH_SECRET` | cualquier texto largo aleatorio |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API |
+
+### 7. Deploy
+
+Sube los archivos a GitHub (reemplazando los anteriores) y Vercel hará el deploy automáticamente.
+
 ---
 
-## 📁 Estructura del proyecto
+## 👥 Gestión de usuarios y empresas (por ahora, manual vía SQL)
 
+Para agregar una nueva empresa cliente:
+```sql
+insert into companies (name) values ('Nombre Empresa Cliente 2') returning id;
 ```
-docextractor/
-├── app/
-│   ├── api/extract/route.ts   ← Backend: recibe archivos, llama a Claude
-│   ├── page.tsx               ← Frontend: interfaz principal
-│   ├── layout.tsx
-│   └── globals.css
-├── package.json
-├── next.config.js
-├── tsconfig.json
-└── .env.example               ← Copia como .env.local con tu API key
+
+Para agregar un chofer/usuario a esa empresa:
+```sql
+insert into app_users (company_id, email, password_hash, name, role)
+values ('ID-EMPRESA', 'chofer1@empresa2.com', 'HASH-GENERADO', 'Juan Pérez', 'editor');
 ```
 
----
-
-## 📱 App móvil
-
-El endpoint `/api/extract` acepta cualquier archivo via `multipart/form-data`.  
-Una app React Native o Flutter puede enviar fotos directamente a ese endpoint.
+> 📌 Próximo paso natural: construir un panel de administración para hacer esto sin SQL — lo abordamos cuando tengas 2-3 empresas activas.
 
 ---
 
-## 💰 Costo aproximado
+## 💰 Costos estimados (Fase piloto)
 
-- Claude Sonnet: ~$0.003 USD por documento
-- 100 docs/semana ≈ $1.20 USD/mes
-- Vercel: gratis para este uso
+| Servicio | Plan | Costo |
+|---|---|---|
+| Supabase | Free tier (500MB DB, 1GB storage) | $0/mes |
+| Vercel | Hobby | $0/mes |
+| Claude API | ~5,000 docs/mes | ~$20-25 USD/mes |
 
----
-
-## 🔧 Personalización
-
-Para agregar más campos, edita el `PROMPT` en `app/api/extract/route.ts`.
+Cuando superes los límites gratuitos (varias empresas, +5GB de fotos), Supabase Pro cuesta $25 USD/mes con límites mucho más altos.
