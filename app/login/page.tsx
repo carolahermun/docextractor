@@ -22,6 +22,7 @@ function ExtractaMark({ size = 46 }: { size?: number }) {
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -30,9 +31,10 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const res = await signIn("credentials", { email, password, redirect: false });
+    const cleanEmail = email.trim().toLowerCase();
+    const res = await signIn("credentials", { email: cleanEmail, password, redirect: false });
     if (res?.ok) router.push("/");
-    else { setError("Email o contraseña incorrectos."); setLoading(false); }
+    else { setError(`Email o contraseña incorrectos. (email enviado: "${cleanEmail}", largo contraseña: ${password.length})`); setLoading(false); }
   };
 
   return (
@@ -67,11 +69,21 @@ export default function LoginPage() {
           </div>
           <div style={{ marginBottom: 24 }}>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: T.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Contraseña</label>
-            <input
-              type="password" value={password} onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••" required
-              style={{ width: "100%", border: `1.5px solid ${T.border}`, borderRadius: 9, padding: "11px 14px", fontSize: 14, outline: "none", color: T.ink, fontFamily: "inherit" }}
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••" required
+                style={{ width: "100%", border: `1.5px solid ${T.border}`, borderRadius: 9, padding: "11px 40px 11px 14px", fontSize: 14, outline: "none", color: T.ink, fontFamily: "inherit" }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(s => !s)}
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: T.faint, fontSize: 13, padding: 4 }}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
           </div>
 
           {error && (
